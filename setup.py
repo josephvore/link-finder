@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='link-finder',
-    version='0.1.0',
+    version='0.1.1',
     packages=find_packages(),
     install_requires=[
         'hrequests==0.8.2',
