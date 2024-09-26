@@ -17,7 +17,7 @@ setup(
     description='A tool to crawl websites and gather all valid Internal URLs.',
     author='Joseph Vore',
     author_email='joseph@connectmodern.com',
-    url='https://github.com/josephvore/gather_urls',
+    url='https://github.com/josephvore/link-finder',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',

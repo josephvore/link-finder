@@ -7,7 +7,7 @@ A Python tool to crawl websites and gather all valid URLs.
 You can install the package after building or from PyPI:
 
 ```bash
-pip install gather-urls
+pip install link-finder
 ```
 
 ## Usage
