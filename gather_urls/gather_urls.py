@@ -4,6 +4,9 @@ import re
 from usp.tree import sitemap_tree_for_homepage
 from courlan import clean_url, check_url, get_base_url
 import logging
+import json
+import time
+import os
 
 
 def initialize_logging():
@@ -52,20 +55,18 @@ def parse_sitemap(homepage_url):
     return links
 
 
-def crawl_website(url):
-    base_url = get_base_url(url)
+def crawl_website(base_url):
     domain = urlparse(base_url).netloc
     visited = set()
     all_links = set()
     to_visit = {clean_and_normalize_url(base_url)}
-    to_visit.update(parse_sitemap(base_url))
 
     while to_visit:
         logging.info(f"Crawling: {len(to_visit)} URLs")
         current_batch = list(to_visit)
         results = hrequests.map(
             [hrequests.async_get(url) for url in current_batch],
-            size=10,
+            size=20,
             exception_handler=exception_handler,
         )
 
@@ -87,6 +88,47 @@ def crawl_website(url):
     return list(all_links)
 
 
+def export_to_json(url, links):
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    sanitized_url = re.sub(r"[^\w\s-]", '', urlparse(url).netloc)  # Sanitize URL to be filename-friendly
+    filename = f"{sanitized_url}-{timestamp}.jsonl"
+
+    try:
+        with open(filename, 'w') as f:
+            for link in links:
+                json_line = json.dumps({"url": link})
+                f.write(json_line + '\n')
+        logging.info(f"Exported URLs to {filename} in JSON Lines format")
+        return filename
+    except Exception as e:
+        logging.error(f"Error exporting to JSON Lines: {e}")
+        return None
+
+
+def gather_urls(url, crawl=False, export=False):
+    if not url:
+        raise ValueError("A valid URL must be provided.")
+
+    initialize_logging()
+    url = get_base_url(url)
+    logging.info(f"Gathering URLs using Base URL: {url}")
+    
+    # Parse sitemap links
+    sitemap_links = parse_sitemap(url)
+
+    # If crawl is enabled, crawl the website with the base URL
+    crawled_links = []
+    if crawl:
+        crawled_links = crawl_website(url)
+
+    all_links = sitemap_links.union(crawled_links)
+
+    if export:
+        export_to_json(url, list(all_links))
+
+    return list(all_links)
+
+
 def main():
     import argparse
 
@@ -96,18 +138,25 @@ def main():
         description="Crawl a website and return all valid URLs."
     )
     parser.add_argument(
-        "-u", "--url", required=True, help="The base URL to start crawling from"
+        "-u", "--url", required=True, help="The base URL to start gathering or crawling URLs from"
+    )
+    parser.add_argument(
+        "-e", "--export", action="store_true", help="Export the URLs to a JSON file"
+    )
+    parser.add_argument(
+        "-c", "--crawl", action="store_true", help="Enable crawling of the website after sitemap parsing"
     )
 
     args = parser.parse_args()
-    url = get_base_url(args.url)
 
-    logging.info(f"Gathering URLs using Base URL: {url}")
-    all_links = crawl_website(url)
+    if not args.url:
+        raise ValueError("You must provide a URL with the -u or --url argument.")
+    
+    links = gather_urls(args.url, crawl=args.crawl, export=args.export)
 
-    for link in all_links:
+    for link in links:
         print(link)
+
 
 if __name__ == "__main__":
     main()
-
